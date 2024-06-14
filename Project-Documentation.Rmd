@@ -1,0 +1,1500 @@
+---
+title: ' Stock Market EDA Project Documentation'
+author: "St.John"
+date: "2024-04-08"
+output:
+  word_document: 
+    toc: true
+    toc_depth: 6
+    highlight: espresso
+  html_document:
+    highlight: espresso
+    theme: cerulean
+    toc: true
+    toc_depth: 6
+---
+
+
+```{r include=FALSE}
+library(quantmod)
+library(tidyverse)
+library(janitor)
+library(skimr)
+library(lubridate)
+library(e1071)
+library(psych)
+library(outliers)
+library(stats)
+library(rmarkdown)
+```
+
+
+
+## Introduction
+
+#### **Business Task**
+
+Identify trends and patterns in historical stock market data 
+to optimize investment strategies and enhance portfolio performance 
+for Investors.
+
+#### **Purpose**
+
+The purpose of this business task is to leverage historical stock 
+market data to gain insights into trends, patterns and relationships. By doing so, 
+we aim to optimize investment strategies and enhance portfolio 
+performance for stakeholders who are interested in investing in the technology 
+service sector and financial service sector.
+
+#### **Approach**
+
+To accomplish this task, an Exploratory Data Analysis (EDA) 
+on historical stock market data for the top 4 stocks in both the technology 
+and financial service sectors was conducted. which involved gathering, preprocessing, 
+analyzing, and visualizing the data to identify key trends, correlations, 
+and patterns.
+
+#### **Guiding Questions**
+
+Some of the questions in which the project aimed 
+to answer included;
+
+1. How is the historical stock market data structured? What are the main variables and features?
+2. Are there any missing values or outliers that need to be addressed?
+3. What are the distributions of stock prices, trading volumes, and other relevant metrics?
+4. Are there any notable relationships, in the data that warrant further investigation?
+5. Are there any seasonal patterns or cyclical trends in each sector's  stock market performance?
+6. How do different sectors, or individual stocks behave over time?
+
+#### **Expected Outcome**
+
+Through this analysis, I anticipate uncovering valuable 
+insights into the behavior of stock prices, volumes, market returns, 
+and volatility over time. These insights will inform the development of more
+effective investment strategies tailored to the specific 
+characteristics of the technology and finance sectors.
+
+
+
+
+
+## Data Preparation
+
+
+#### **Getting the Data from the Quantmod Yahoo Finance API**
+
+The foundation of my exploratory data analysis is based on historical stock data from leading companies within the technology service and financial service sectors. To acquire this data, I used the `quantmod` package in R, which is designed for quantitative financial modelling and trading strategy development. My first step involved selecting the stock symbols for the top 4 companies in each sector, chosen for their market capitalization and relevance to my study. This included **AAPL**, **MSFT**, **META**, and **GOOG** for technology services and **JPM**, **BAC**, **WFC**, and **HSBC** for financial services.
+
+#### **Packages Used in this stage**
+
+* `library(quantmod)`: This package facilitates access to financial data sources and 
+provides various functions for financial modelling and data analysis.
+
+#### **Code Implementation**
+```{r message=FALSE, warning=FALSE}
+# Getting the Data from the Quantmod Yahoo Finance API
+# Define the stock symbols of the top 4 technology service and banking and financial services companies
+symbols <- c("AAPL", "JPM", "MSFT", "BAC", "META", "WFC", "GOOG", "HSBC")
+
+# Set the start and end dates
+start_date <- as.Date("2019-01-01")
+end_date <- as.Date("2023-12-31")
+
+# Fetch the stock data from the API
+getSymbols(symbols, src = "yahoo", from = start_date, to = end_date)
+```
+
+#### **Description**
+
+I utilized Quantmod’s get Symbols function to query the Yahoo Finance API,
+retrieving historical data for the selected stock symbols covering the period 
+from January 1, 2019, to December 31, 2023. This dataset includes daily open, 
+high, low, and close prices (OHLC), along with trading volumes, providing a 
+comprehensive foundation for the analysis that follows.
+
+#### **Outcome**
+The successful acquisition of this data marks the completion of the 
+initial stage of my project. With this rich historical dataset, 
+I am now prepared to dive deeper into analyzing stock market trends,
+comparing sector performances, and identifying potential areas of 
+investment opportunity.
+
+
+## Data PreProcessing 
+
+The objective of this stage is to preprocess the gathered historical stock data 
+to ensure consistency, accuracy, and suitability for analysis. This includes 
+handling data type formats, renaming columns, dealing with missing values, 
+adding additional columns, detecting outliers, and performing feature engineering.
+
+
+#### **Packages Used in this stage**
+
+* `library(skimr)` used for checking missing values
+* `library(lubridate)` used for date feature engineering 
+* `library(dplyr)` used for data manipulation and cleaning
+* `library(ggplot2)` used for visualization 
+* `library(outliers)` used to detect outilers
+* `library(tidyr)` used for data manipulation
+
+#### **Description of tasks in this stage**
+
+#### **Preparing the Data Frames**
+
+The initial step in preparing the data for analysis involved passing 
+the fetched stock data into separate data frames for each stock using 
+the `as.data.frame()` function. This crucial step facilitated ease of manipulation
+and analysis in subsequent stages.
+```{r message=FALSE, warning=FALSE}
+# Passing the fetched data into the dataframe for ease of manipulation 
+apple_stockdata <- as.data.frame(AAPL)
+jpmorgan_stockdata <- as.data.frame(JPM)
+microsoft_stockdata <- as.data.frame(MSFT)
+bankofAmerica_stockdata <- as.data.frame(BAC)
+meta_stockdata <- as.data.frame(META)
+wellsfargo_stockdata <- as.data.frame(WFC)
+google_stockdata <- as.data.frame(GOOG)
+hsbc_stockdata <- as.data.frame(HSBC)
+```
+
+#### **Data Type Adjustments and Renaming Columns**
+
+To ensure accuracy in the data's format, the first variable, 
+originally stored as a row, was transformed into a column, 
+thereby correctly positioning the date information. 
+This adjustment was pivotal for time-series analysis and was 
+accomplished using the `data.frame()` function.
+Consistency across data frames was achieved by standardizing column names, 
+utilizing the `rename()` function from the dplyr package. 
+This step was essential for maintaining clarity and uniformity across datasets.
+
+```{r message=FALSE, warning=FALSE}
+# Handle inaccurate data type format 
+# Make the first variable which is stored as a row to be a column and assign it the date as column name
+apple_stockdata <- data.frame(date = rownames(apple_stockdata), 
+                               apple_stockdata, row.names = NULL)
+jpmorgan_stockdata <- data.frame(date = rownames(jpmorgan_stockdata), 
+                                jpmorgan_stockdata, row.names = NULL)
+microsoft_stockdata <- data.frame(date = rownames(microsoft_stockdata), 
+                                   microsoft_stockdata, row.names = NULL)
+bankofAmerica_stockdata <- data.frame(date = rownames(bankofAmerica_stockdata), 
+                                bankofAmerica_stockdata, row.names = NULL)
+meta_stockdata <- data.frame(date = rownames(meta_stockdata), 
+                                      meta_stockdata, row.names = NULL)
+wellsfargo_stockdata <- data.frame(date = rownames(wellsfargo_stockdata), 
+                             wellsfargo_stockdata, row.names = NULL)
+google_stockdata <- data.frame(date = rownames(google_stockdata), 
+                                   google_stockdata, row.names = NULL)
+hsbc_stockdata <- data.frame(date = rownames(hsbc_stockdata), 
+                               hsbc_stockdata, row.names = NULL)
+
+```
+```{r message=FALSE, warning=FALSE}
+# Renaming column names for consistency 
+apple_stockdata <- apple_stockdata %>% rename(
+  Date = date,
+  Open = AAPL.Open,
+  High = AAPL.High,
+  Low  = AAPL.Low,
+  Close = AAPL.Close,
+  Volume = AAPL.Volume,
+  Adju_Close = AAPL.Adjusted
+)
+
+jpmorgan_stockdata <- jpmorgan_stockdata %>% rename(
+  Date = date,
+  Open = JPM.Open,
+  High = JPM.High,
+  Low  = JPM.Low,
+  Close = JPM.Close,
+  Volume = JPM.Volume,
+  Adju_Close = JPM.Adjusted
+)
+
+microsoft_stockdata <- microsoft_stockdata %>% rename(
+  Date = date,
+  Open = MSFT.Open,
+  High = MSFT.High,
+  Low  = MSFT.Low,
+  Close = MSFT.Close,
+  Volume = MSFT.Volume,
+  Adju_Close = MSFT.Adjusted
+)
+
+bankofAmerica_stockdata <- bankofAmerica_stockdata %>% rename(
+  Date = date,
+  Open = BAC.Open,
+  High = BAC.High,
+  Low  = BAC.Low,
+  Close = BAC.Close,
+  Volume = BAC.Volume,
+  Adju_Close = BAC.Adjusted
+)
+
+meta_stockdata <- meta_stockdata %>% rename(
+  Date = date,
+  Open = META.Open,
+  High = META.High,
+  Low  = META.Low,
+  Close = META.Close,
+  Volume = META.Volume,
+  Adju_Close = META.Adjusted
+)
+
+wellsfargo_stockdata <- wellsfargo_stockdata %>% rename(
+  Date = date,
+  Open = WFC.Open,
+  High = WFC.High,
+  Low  = WFC.Low,
+  Close = WFC.Close,
+  Volume = WFC.Volume,
+  Adju_Close = WFC.Adjusted
+)
+
+google_stockdata <- google_stockdata %>% rename(
+  Date = date,
+  Open = GOOG.Open,
+  High = GOOG.High,
+  Low  = GOOG.Low,
+  Close = GOOG.Close,
+  Volume = GOOG.Volume,
+  Adju_Close = GOOG.Adjusted
+)
+
+hsbc_stockdata <- hsbc_stockdata %>% rename(
+  Date = date,
+  Open = HSBC.Open,
+  High = HSBC.High,
+  Low  = HSBC.Low,
+  Close = HSBC.Close,
+  Volume = HSBC.Volume,
+  Adju_Close = HSBC.Adjusted
+)
+
+```
+
+
+#### **Missing Values Check**
+
+A thorough inspection for missing values in each stock dataset was 
+conducted using the `skim_without_charts()` function from the skimr package. 
+This preemptive check ensured that the analysis was based on complete data, 
+mitigating potential biases or inaccuracies.
+```{r message=FALSE, warning=FALSE}
+#Did Same for other stocks with all having same results for missing values
+# Results showing no missing values in the dataset 
+skim_without_charts(apple_stockdata)
+```
+
+#### **Symbol Identification and Dataframe Consolidation**
+
+To distinguish between stocks, a stock symbol column was appended to each 
+dataset. Subsequently, all individual stock data frames were combined 
+into a unified dataframe named stock_market_data using the `rbind()` function,
+streamlining the dataset for comprehensive analysis.
+```{r message=FALSE, warning=FALSE}
+# Adding Stock symbol as a column name in each dataset before combining into a big dataset
+apple_stockdata$Symbol <- "AAPL"
+jpmorgan_stockdata$Symbol <- "JPM"
+microsoft_stockdata$Symbol <- "MSFT"
+bankofAmerica_stockdata$Symbol <- "BAC"
+meta_stockdata$Symbol <- "META"
+wellsfargo_stockdata$Symbol <- "WFC"
+google_stockdata$Symbol <- "GOOG"
+hsbc_stockdata$Symbol <- "HSBC"
+
+# Combining all data into a single dataframe 
+stock_market_data <- apple_stockdata
+stock_market_data <- rbind(stock_market_data, jpmorgan_stockdata)
+stock_market_data <- rbind(stock_market_data, microsoft_stockdata)
+stock_market_data <- rbind(stock_market_data, bankofAmerica_stockdata)
+stock_market_data <- rbind(stock_market_data, meta_stockdata)
+stock_market_data <- rbind(stock_market_data, wellsfargo_stockdata)
+stock_market_data <- rbind(stock_market_data, google_stockdata)
+stock_market_data <- rbind(stock_market_data, hsbc_stockdata)
+```
+
+
+#### **Sector and Company Classification**
+
+The dataset was further enriched by adding Sector and Company columns. 
+This classification was based on stock symbols and was achieved by 
+merging the data with a lookup table, utilizing the `merge()` function.
+This addition allowed for more nuanced sector-specific analyses.
+```{r message=FALSE, warning=FALSE}
+# Add Sector and Company Column based on the Stock Symbols
+sector_company_lookup <- data.frame(
+  Symbol = c("AAPL", "JPM", "MSFT", "BAC", "META", "WFC", "GOOG", "HSBC"),
+  Sector = c("Technology", "Financials", "Technology", "Financials", "Technology", "Financials", "Technology", "Financials"),
+  Company = c("Apple Inc.", "JPMorgan Chase & Co.", 
+              "Microsoft Corporation", "Bank of America Corporation", 
+              "Meta Platforms, Inc.", "Wells Fargo" , "Google", "HSBC Holdings plc")
+)
+ 
+# Merge the lookup table with the stock_market_data based on the 'Symbol' column
+stock_market_data <- merge(stock_market_data, sector_company_lookup, by = "Symbol", all.x = TRUE)
+
+# Reorder the columns so that the Date colum is first
+stock_market_data <-stock_market_data[, c("Date", "Open", "High", "Low"
+                               , "Close", "Volume", "Adju_Close","Symbol", "Sector", "Company")]
+```
+
+
+#### **Data Reordering and Feature Engineering**
+
+To optimize the dataset for analysis, columns were strategically reordered, 
+placing the Date column at the forefront. Feature engineering was then performed 
+to introduce new variables, including daily market return and volatility measures, 
+alongside date components like Year, Month, Quarter, Day, and Day of the Week, 
+utilizing functions from the `lubridate` package for date manipulation.
+```{r message=FALSE, warning=FALSE}
+# Feature Engineering to create new columns for date,  Daily market return, and volatility
+# Convert Date Column stored as a character to a date data type 
+stock_market_data$Date <- as.Date(stock_market_data$Date)
+
+# 1 Extracting Daily Market Return  and Volatility variables
+stock_market_data <- stock_market_data %>% 
+  mutate(Market_Return = (Close-Open)/ Close) %>%
+  mutate(Volatility = ((High-Low) / Close) * 100)
+  
+# 2 Extract Year, Month, Quarter, Day, and Day of week
+stock_market_data <- stock_market_data %>%
+  mutate(Year = format(as.Date(Date), "%Y")) %>% 
+  mutate(Month = format(as.Date(Date), "%B")) %>% 
+  mutate(Day = format(as.Date(Date), "%d")) %>% 
+  mutate(Day_of_Week = format(as.Date(Date), "%A"))
+stock_market_data$Quarter <- paste("Q", quarter(stock_market_data$Date), sep = "")
+
+
+# Changing the order of variables 
+stock_market_data$Quarter <- ordered(stock_market_data$Quarter, 
+                                     levels=c("Q1", "Q2", "Q3", "Q4" 
+                                     ))
+stock_market_data$Month <- ordered(stock_market_data$Month, 
+                                   levels=c("January", "February", "March", 
+                                            "April", "May", "June", 
+                                            "July", "August", "September", 
+                                            "October", "November", "December"))
+stock_market_data$Day_of_Week <- ordered(stock_market_data$Day_of_Week, 
+                                         levels=c("Monday", "Tuesday", 
+                                                  "Wednesday", "Thursday", 
+                                                  "Friday"
+                                         ))
+```
+
+
+#### **Detecting and Assessing Outliers**
+
+An essential part of data preprocessing involved identifying potential outliers
+within the dataset. Given the nature of stock market data, outliers can represent
+either real market events or anomalies that might skew the analysis 
+if not appropriately addressed. A boxplot chart was used to visualize the possible outilers present in the data.
+```{r message=TRUE, warning=FALSE}
+# Detect Outliers in Data with Box Plot
+# Checking for possible outliers
+numeric_var <- stock_market_data %>% select(Open,High,Low,Close, Adju_Close, 
+                                            Volume, Volatility, Market_Return)
+outlier(numeric_var)
+```
+The results above show possible outlier values in each variable. which suggest
+extreme values that could impact any analysis going forward.
+```{r message=FALSE, warning=FALSE}
+# changing the format from a wide to long data
+numeric_long_data <- numeric_var %>% 
+  pivot_longer(cols = c(Open, High, Low, Close, Adju_Close, Volume, Volatility, 
+                        Market_Return), 
+               names_to = "Metrics", values_to = "Value")
+# Create the box plot for all numeric variables
+ggplot(numeric_long_data, aes(x = Metrics, y = Value, fill=Metrics)) + 
+  geom_boxplot() +
+  labs(title = "Outlier Detection Across Numeric Metrics", x = "Metrics", y = "Value") +
+  facet_wrap(~Metrics, scales = "free_y") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+#### **Outlier Observations**
+
+* **Price Metrics (Adjusted Close, Close, High, Open)**: The presence of outliers 
+in these metrics likely signifies days with exceptionally high stock prices. 
+These could be attributed to specific market events or announcements affecting 
+the companies' stock values.
+* **Market Return**: Outliers on both ends of the distribution suggest days with 
+unusually high positive or negative returns, 
+which could be critical in understanding market reactions to certain events.
+* **Volume and Volatility**: A wide range of outliers in these metrics 
+indicates days with abnormally high trading volume or price fluctuations. 
+Such variations often occur in response to market news, earnings reports, 
+or macroeconomic events, warranting further investigation.
+
+#### **Rationale for Handling Outliers**
+
+Upon detecting these outliers, I decided against removing or adjusting them 
+in the dataset. My analysis indicated that these outliers represent true data points, 
+not artifacts of data collection or preprocessing errors. 
+Given the diverse scale of stock values and the nature of financial markets, 
+such outliers reflect genuine market behaviors and critical events worth analyzing. 
+Their presence enriches the dataset by offering insights into market dynamics and 
+the impact of external factors on stock performance.
+
+#### **Outcome**
+
+Upon completion of the Data Preprocessing stage, the historical stock data has 
+been successfully preprocessed to ensure consistency, accuracy, 
+and suitability for analysis
+
+
+
+
+## Methodolgy 
+
+The methodology adopted in this project involved a series of analytically 
+steps I designed to explore the data across technology and financial sectors. 
+Key techniques included descriptive statistics to grasp the data structure, 
+distribution analysis for numerical variables, sector comparison using summary 
+statistics, correlation analysis to identify relationships, seasonal trend evaluation, 
+and time series analysis to observe over-time changes.
+
+#### **Packages Used in this stage**
+
+* `library(skimr)` used for understand my dataset
+* `library(dplyr)` used for data manipulation
+* `library(ggplot2)` used for visualization 
+* `library(tidyr)` used for data manipulation
+* `library(e1071)` used for skewness and kurtosis calculations.
+* `library(stats)` used for correlation analysis
+
+
+#### **Understanding the Data**
+
+I began my exploratory data analysis by thoroughly understanding the dataset. 
+Initial examinations included assessing the data's structure, datatypes, basic descriptive 
+statistics, and ensuring no missing values were present. 
+This groundwork was crucial for setting the stage for more detailed analyses.
+
+Result from the `skim_without_charts` function shows my data has a total of 10,064 rows,
+17 column as well as frequency of each data type of the columns (variables). It also dives deeper to analyse each variable type which included mostly **character**, **date**, **factor** and **numeric**.
+```{r message=TRUE, warning=FALSE}
+skim_without_charts(stock_market_data) #  a summary of Features and makeup of the dataset
+```
+
+The results from the `str` function  further shows the datatype of of each variable 
+```{r message=TRUE, warning=FALSE}
+str(stock_market_data) # To understand the characteristics of each variables
+```
+
+`summary` function gives a basic descriptive statistics overview of the dataset to 
+understand how each variable are distributed and how each variable scales.
+```{r message=TRUE, warning=FALSE}
+summary(stock_market_data) # Get a view brief view of the dataset
+```
+
+the `glimpse` function gives a brief overview of the dataset including the observations
+```{r message=TRUE, warning=FALSE}
+glimpse(stock_market_data)
+```
+
+
+
+#### **Assessing Distribution with Skewness and Kurtosis**
+
+To gauge the distribution of numeric variables, I utilized skewness and kurtosis 
+calculations. These revealed right-skewed distributions for price-related metrics 
+and volume, pointing to the presence of outliers which has been explained earlier 
+and the occasional days of high market activity.Used a histogram & density combined 
+plot to show this distribution
+```{r message=TRUE, warning=FALSE}
+#Calculate skewness to understand distribution of numeric variables
+apply(numeric_var[, sapply(numeric_var, is.numeric)], 2, skewness)
+```
+
+Skewness is used to measure the degree to which the distribution of a variable 
+is or is not a normal distribution.When the skewness results ranges from -0.5 to + 0.5 it is a normal distribution, when the result is a negative value it means the variable 
+is directed towards the left with more values on the right side of the distribution and when positive means the variable is directed towards the right with more values on the left. 
+When the values of a skewness result is greater than -1 or +1 it indicates extreme skewness and possibility of outilers.
+```{r message=TRUE, warning=FALSE}
+#Calculate kurtosis to understand the shape of the distribution of numeric variables
+apply(numeric_var[, sapply(numeric_var, is.numeric)], 2, kurtosis)
+```
+
+Kurtosis is used to know shape of  distribution of variables. A kurtosis value of 
+3 means that variable is a normal distribution, when less 3 or greater than 3 
+then it suggest presents of extreme values that is causing the distribution to deviate from a normal distribution
+
+```{r message=TRUE, warning=FALSE}
+# Plotting Histogram and Density chart for distribution of numeric variables
+ggplot(numeric_long_data, aes(x = Value, fill=Metrics)) +
+  geom_histogram(aes(y = ..density..), bins = 30, color = "black") +
+  geom_density(alpha = 0.2, size=0.7) +
+  facet_wrap(~ Metrics, scales = "free") +
+  labs(title = "Density and Distribution Across Numeric Metrics", x = "Value", y = "Density") +
+  theme_minimal()
+```
+
+**From the histograms**:
+
+* The distributions of Adjusted Close, Close, High, Low, and Open are skewed right, meaning that there are a number of very high values (outliers) pulling the mean upwards.
+* Market Return appears to have a distribution that is centered around zero with tails on both ends, suggesting days with both significant gains and losses.
+* Volume and Volatility both show a right-skewed distribution, indicating occasional days with very high trading volume or large price movements, which are less frequent but have a significant impact on the distribution.
+
+
+#### **Sector-Based Statistical Summaries**
+
+My analysis extended to comparing key metrics between the Technology and Financial
+sectors through bar charts. 
+```{r message=TRUE, warning=FALSE}
+# Summary of some descriptive Statistics for key metrics based on sector
+# 1 for Close Price
+stock_market_data %>% group_by(Sector) %>%
+  summarise(Min  = min(Close),
+            Max = max(Close),
+            Average = mean(Close),
+            Variance = var(Close),
+            Standard_deviation = sd(Close)
+            ) %>% 
+  pivot_longer(cols = -Sector, 
+               names_to = "Statistic", 
+               values_to = "Value") %>%
+  ggplot(aes(x = Sector, y = Value, fill = Sector)) + 
+  geom_col(position = "dodge", width = 0.4) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  facet_wrap(~Statistic, scales = "free") +
+  theme_minimal() +
+  labs(title = "Close Price Summary Statistics by Sector",
+       x = "Sector",
+       y = "Value") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# 2 Volume
+stock_market_data %>% group_by(Sector) %>%
+  summarise(Min  = min(Volume),
+            Max = max(Volume),
+            Average = mean(Volume),
+            Variance = var(Volume),
+            Standard_deviation = sd(Volume)
+            ) %>% 
+  pivot_longer(cols = -Sector, 
+               names_to = "Statistic", 
+               values_to = "Value") %>%
+  ggplot(aes(x = Sector, y = Value, fill = Sector)) + 
+  geom_col(position = "dodge", width = 0.4) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  facet_wrap(~Statistic, scales = "free") +
+  theme_minimal() +
+  labs(title = "Trading Volume Summary Statistics by Sector",
+       x = "Sector",
+       y = "Value") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# 3 for Volatility
+stock_market_data %>% group_by(Sector) %>%
+  summarise(Min  = min(Volatility),
+            Max = max(Volatility),
+            Average = mean(Volatility),
+            Variance = var(Volatility),
+            Standard_deviation = sd(Volatility)
+            ) %>% 
+  pivot_longer(cols = -Sector, 
+               names_to = "Statistic", 
+               values_to = "Value") %>%
+  ggplot(aes(x = Sector, y = Value, fill = Sector)) + 
+  geom_col(position = "dodge", width = 0.4) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  facet_wrap(~Statistic, scales = "free") +
+  theme_minimal() +
+  labs(title = "Sectoral Volatility Breakdown: A Statistical Overview",
+       x = "Sector",
+       y = "Value") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+# 4 for Market_Return
+stock_market_data %>% group_by(Sector) %>%
+  summarise(Min  = min(Market_Return),
+            Max = max(Market_Return),
+            Average = mean(Market_Return),
+            Variance = var(Market_Return),
+            Standard_deviation = sd(Market_Return)
+            ) %>% 
+  pivot_longer(cols = -Sector, 
+               names_to = "Statistic", 
+               values_to = "Value") %>%
+  ggplot(aes(x = Sector, y = Value, fill = Sector)) + 
+  geom_col(position = "dodge", width = 0.4) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  facet_wrap(~Statistic, scales = "free") +
+  theme_minimal() +
+  labs(title = "Comparative Sector Returns: A Statistical Overview",
+       x = "Sector",
+       y = "Value") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+```
+
+**Close Price Summary Statistics by Sector**
+
+* Technology stocks have a much higher average, maximum, and minimum 
+close price than Financials.
+* The standard deviation and variance are also significantly higher for 
+Technology, indicating a wider dispersion of close prices.
+
+**Trading Volume Summary Statistics by Sector**
+
+* The average and maximum trading volumes are higher for Technology stocks 
+compared to Financials.
+* The standard deviation and variance for trading volume are much larger in 
+the Technology sector, implying more variability in the number of shares traded.
+
+**Volatility Summary Statistics by Sector**
+
+* The average volatility is slightly higher for Technology than for Financials.
+However, the maximum volatility observed is substantially higher in 
+the Financials sector.
+* The Financials sector exhibits higher dispersion in volatility, 
+as shown by the greater standard deviation and variance.
+
+**Market Return Summary Statistics by Sector**
+
+* The average return is higher for Technology stocks than for Financials, 
+but this comes with greater risk as indicated by a higher standard deviation and variance.
+* The maximum return observed is similar for both sectors, yet 
+Technology shows a higher minimum return compared to Financials.
+
+#### **Correlation Analysis**
+
+By calculating correlation coefficients and visualizing these relationships 
+through scatter plots, I identified significant correlations, such as the strong 
+link between open and close prices. This step was pivotal in understanding the 
+interconnections of market variables.
+```{r message=TRUE, warning=FALSE}
+# Calculate Correlation Coefficient to understand how variables relate with each other 
+cor(numeric_var)
+```
+Correlation is a measure that is done to understand the strength of linear 
+relationship between two variables. with the values ranging from 
+
+**Strong correlation**
+Positive: +0.7 to +1.0
+Negative: -0.7 to -1.0
+
+**Moderate correlation**
+Positive: +0.3 to +0.7
+Negative: -0.3 to -0.7
+
+**Weak correlation**
+Positive: +0.1 to +0.3
+Negative: -0.1 to -0.3
+
+**No or negligible correlation**
+Around 0, typically in the range of -0.1 to +0.1
+
+**Correlation Results Among variables **
+
+* **Open vs Close**: The correlation is extremely high at 0.9997, 
+indicating that the opening and closing prices for the day are 
+almost perfectly aligned.
+
+* **High vs Low**: Similarly, there's an extremely high correlation of 0.9998
+between the highest and lowest prices of the day.
+
+* **Close vs Market Return**: The correlation is 0.0167, suggesting a very 
+weak positive relationship between the closing price and market return for the day.
+
+* **Volume vs Market Return**: With a correlation of -0.0093, there's virtually no relationship between trading volume and market return.
+
+* **Volume vs Volatility**: The correlation is 0.385, indicating a moderate positive relationship between trading volume and volatility.
+
+* **High vs Volatility**: The correlation of 0.064 suggests a very weak positive relationship between the highest price of the day and volatility.
+
+* **Market Return vs Volatility**: The correlation is -0.0497, indicating
+a very weak negative relationship between market return and volatility.
+
+**Scatter Plot visuals showing relationship among variables**
+```{r message=TRUE, warning=FALSE}
+# Plotting scatter plot to show some key correlation results 
+# 1 Open Vs Close
+ggplot(data = stock_market_data, aes(x=Open, y=Close, color= Sector)) +
+  geom_point(alpha=0.5) + 
+  theme_minimal() +
+  scale_color_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+   labs(title = "Daily Price Journey: A Comparison of Open vs. Close Prices", 
+        x="Open",
+        y="Close") +
+  facet_wrap(~ Sector)
+# 2 High Vs Low
+ggplot(data = stock_market_data, aes(x=High, y=Low, color= Sector)) +
+  geom_point(alpha=0.5) + 
+  theme_minimal() +
+  scale_color_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+   labs(title = "Daily Price Range Explored: High Prices Compared to Low Prices", 
+        x="High",
+        y="Low") +
+  facet_wrap(~ Sector)
+# 3 Close Vs Market Return
+ggplot(data = stock_market_data, aes(x=Close, y=Market_Return, color= Sector)) +
+  geom_point(alpha=0.5) + 
+  geom_smooth(size=0.5) +
+  theme_minimal() +
+  scale_color_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+   labs(title = "Exploring the Correlation: Close Price and Market Returns", 
+        x="Close",
+        y="Market Return") +
+  facet_wrap(~ Sector)
+# 4 Volume Vs Market Return
+ggplot(data = stock_market_data, aes(x=Volume, y=Market_Return, color= Sector)) +
+  geom_point(alpha=0.5) + 
+  geom_smooth(size=0.5) +
+  theme_minimal() +
+  scale_color_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+   labs(title = "Investigating Trading Volume's Influence on Daily Market Returns", 
+        x="Volume",
+        y="Market Return") +
+  facet_wrap(~ Sector)
+# 5 Volume Vs Volatility
+ggplot(data = stock_market_data, aes(x=Volume, y=Volatility, color= Sector)) +
+  geom_point(alpha=0.5) + 
+  geom_smooth(size=0.5) +
+  theme_minimal() +
+  scale_color_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+   labs(title = "Volume vs. Volatility: Mapping the Dynamics of the Market", 
+        x="Volume",
+        y="Volatility") +
+  facet_wrap(~ Sector)
+# 6 High Vs Volatility
+ggplot(data = stock_market_data, aes(x=High, y=Volatility, color= Sector)) +
+  geom_point(alpha=0.5) + 
+  theme_minimal() +
+  scale_color_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+   labs(title = "High Prices and Market Volatility: Analyzing Their Connection", 
+        x="High",
+        y="Volatility") +
+  facet_wrap(~ Sector)
+# 7 Market Return Vs Volatility
+ggplot(data = stock_market_data, aes(x=Market_Return, y=Volatility, color= Sector)) +
+  geom_point(alpha=0.5) +
+  geom_smooth(size=0.5) +
+  theme_minimal() +
+  scale_color_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+   labs(title = "Risk and Reward: Analyzing the Relationship Between Daily Market Return and Volatility", 
+        x="Market Return",
+        y="Volatility") +
+  facet_wrap(~ Sector)
+```
+
+**Correlation and Visuals when Year is taken as an independent variable against another variable to identify trend**
+
+```{r message=TRUE, warning=FALSE}
+#correlation  btw year taking year as an independent variable and other variables to understand trend 
+as.numeric(stock_market_data$Year) %>%
+  cor(stock_market_data[sapply(stock_market_data, is.numeric)]) 
+# 1. Year vs Close Price
+ggplot(stock_market_data, aes(x = as.numeric(Year), y = Close, color = Sector)) + 
+  geom_point(alpha = 0.5) +  # Scatter plot
+  geom_smooth(method = "lm", se = FALSE, color = "#696969", size=0.5) +
+  scale_color_manual(values = 
+                       c("Financials" = "#467ab0", 
+                         "Technology" = "#009933")) +
+  facet_wrap(~Sector) +  # Separate plots for each sector
+  labs(title = "Trend Analysis: Yearly Close Price Evolution by Sector",
+       x = "Year",
+       y = "Close Price") +
+  theme_minimal()
+# 2. Year vs Volatility
+ggplot(stock_market_data, aes(x = as.numeric(Year), y = Volatility, color = Sector)) + 
+  geom_point(alpha = 0.5) +  # Scatter plot
+  geom_smooth(method = "lm", se = FALSE, color = "#696969", size=0.5) +
+  scale_color_manual(values = 
+                       c("Financials" = "#467ab0", 
+                         "Technology" = "#009933")) +
+  facet_wrap(~Sector) +  # Separate plots for each sector
+  labs(title = "Trend Analysis: Yearly Market Volatility by Sector",
+       x = "Year",
+       y = "Volatility") +
+  theme_minimal()
+# 3. Year vs Volume
+ggplot(stock_market_data, aes(x = as.numeric(Year), y = Volume, color = Sector)) + 
+  geom_point(alpha = 0.5) +  # Scatter plot
+  geom_smooth(method = "lm", se = FALSE, color = "#696969", size=0.5) +
+  scale_color_manual(values = 
+                       c("Financials" = "#467ab0", 
+                         "Technology" = "#009933")) +
+  facet_wrap(~Sector) +  # Separate plots for each sector
+  labs(title = "Trend Analysis: Trading Volume Over Years by Sector",
+       x = "Year",
+       y = "Volume") +
+  theme_minimal()
+```
+
+**Correlation and visuals between average market return for both sectors on a yearly basis**
+```{r message=TRUE,warning=FALSE}
+# Correlation for Average Market Returns of Sectors across Year
+stock_market_data %>%
+  group_by(Year, Sector) %>%
+  summarise(Avg_Market_Return = mean(Market_Return, na.rm = TRUE), .groups = 'drop') %>%
+  spread(Sector, Avg_Market_Return) %>%
+  select(-Year) %>%  # Remove the Year column to ensure 'x' is numeric
+  cor(use = "pairwise.complete.obs")
+# Plotting a scatter plot to show relationship
+  stock_market_data %>% group_by(Year, Sector) %>%
+  summarise(Avg_Market_Return = mean(Market_Return, na.rm = TRUE), .groups = 'drop') %>%
+ pivot_longer(cols = Avg_Market_Return, names_to = "Metrics", values_to = "Values" ) %>%
+  ggplot(aes(x = Year, y = Values, color = Sector)) +
+   geom_point(size = 3, alpha=0.7) +  # Scatter points
+   geom_line(aes(group = Sector), size = 0.8) +  # Line to connect points
+   scale_color_manual(values = c("Technology" = "#009933", "Financials" = "#467ab0")) +
+   labs(title = "Yearly Average Market Returns: Technology vs. Financials",
+        x = "Year",
+        y = "Average Market Return") +
+   theme_minimal()
+```
+
+
+
+**Explanation of Relationships observed from the scatter plots between two variables**
+
+* **Open vs Close Scatter Plot**: The points are almost on a straight line, 
+confirming the near-perfect correlation between the opening and closing prices. 
+This suggests that the difference between the opening and closing prices for a 
+given day is generally very small.
+
+* **High vs Low Scatter Plot**: Similarly, this plot shows a very tight 
+relationship between the day's highest and lowest prices, again nearly a 
+perfect linear relationship, indicating that the range between the high and 
+low prices is consistently proportional.
+
+* **Close vs Market Return Scatter Plot**: Reflecting the weak correlation, 
+the plot shows a very scattered distribution of points with no clear pattern.
+This suggests that daily closing prices and market returns for the day don't 
+have a strong linear relationship, implying that the day's market return is 
+influenced by factors other than just the closing price of this dataset.
+
+* **Volume vs Market Return Scatter Plot**: This plot illustrates the very
+weak negative correlation between trading volume and market return. 
+The distribution of points is widely scattered, showing no clear trend or pattern, 
+which indicates that day-to-day variations in trading volume don't 
+consistently predict the direction of market return.
+
+* **Volume vs Volatility Scatter Plot**: This plot shows a moderate positive 
+relationship between volume and volatility, as indicated by the spread of points. 
+Higher trading volumes tend to correspond with higher volatility, although the 
+relationship isn't perfectly linear, indicating other factors also influence 
+volatility.
+
+* **High vs Volatility Scatter Plot**: Reflecting the very weak positive 
+correlation, this plot also shows a scattered distribution of points with no
+discernible trend. While there's a slight positive correlation suggesting that
+days with higher prices might have slightly more volatility, the relationship 
+is not strong enough to draw any firm conclusions.
+
+* **Market Return vs Volatility Scatter Plot**: Displaying a slight 
+negative correlation, the plot reveals a broadly scattered distribution 
+with no clear trend. The minor negative correlation hints that higher 
+market returns might marginally decrease volatility, 
+but the relationship is too weak to infer any substantial conclusions.
+
+**Results when Year is taken as an independent variable against another variable to identify trend**
+
+* **Price Variables (Open, High, Low, Close, Adjusted Close)**: There's a positive correlation with the year, albeit moderate, indicating that stock prices have tended to increase over the years included in the dataset. The adjusted close, which accounts for dividends and splits, shows a slightly stronger correlation than the raw prices, suggesting it may capture some additional aspects of the stock's value increase over time.
+
+* **Volume**: The negative correlation with the year indicates that, on average, trading volumes have decreased over the years. This could reflect a variety of market conditions or changes in trading behavior.
+
+* **Market Return**: The near-zero correlation with the year suggests that annual market returns do not show a significant trend up or down over the period covered by the dataset.
+
+* **Volatility**: The slight positive correlation suggests that market volatility has increased somewhat over the years, though the correlation is weak, indicating this is not a strong trend.
+
+**Results from scatter plot of correlation between average market return from both sectors on a yearly basis**
+
+* **Trend Direction**: Both sectors exhibit some year-to-year fluctuation 
+in market returns. The line chart helps in visualizing these trends, 
+showing how market returns have varied over the period.
+
+* **Comparison Between Sectors**: The moderate positive correlation observed 
+earlier is visually supported here. When one sector's average market return 
+increases or decreases from one year to the next, the other sector 
+often shows a similar movement, though the magnitude of changes can differ.
+
+
+
+#### **Seasonal Analysis**
+
+Exploring seasonal patterns, I analyzed trends across different time frames 
+which included year, quarter, month, day of the week, 
+noting particular periods like the heightened trading volume and volatility in 2020. 
+The findings suggested these patterns were largely influenced by specific 
+events rather than inherent seasonality.
+```{r message=TRUE, warning=FALSE}
+# 1 Exploring total and average Volume in relation to month, year, day_of-week and Quarter
+# Volume based by Sector for Each Year 
+stock_market_data %>%
+  group_by(Sector, Year) %>%
+  summarise(Total_Volume = sum(Volume, na.rm = TRUE),
+            Average_Volume = mean(Volume, na.rm = TRUE), .groups = 'drop') %>%
+  pivot_longer(cols = c(Average_Volume, Total_Volume), names_to = "Measure", values_to = "Value") %>%
+  mutate(Year = as.factor(Year)) %>%
+  ggplot(aes(x=Year, y=Value, fill=Sector)) + 
+  geom_col(position="dodge", width=0.5) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  labs(title = "Annual Trading Volume Analysis by Sector", 
+       x = "Year", 
+       y = "Volume") +
+  facet_wrap(~Measure, scales = "free_y") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1)) 
+# Volume based by Sector for Each Quarter 
+stock_market_data %>%
+  group_by(Sector, Quarter) %>%
+  summarise(Total_Volume = sum(Volume, na.rm = TRUE),
+            Average_Volume = mean(Volume, na.rm = TRUE), .groups = 'drop') %>%
+  pivot_longer(cols = c(Average_Volume, Total_Volume), names_to = "Measure", values_to = "Value") %>%
+  mutate(Quarter = as.factor(Quarter)) %>%
+  ggplot(aes(x=Quarter, y=Value, fill=Sector)) + 
+  geom_col(position="dodge", width=0.5) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  labs(title = "Quarterly Volume Patterns Across Sectors", 
+       x = "Quarter", 
+       y = "Volume") +
+  facet_wrap(~Measure, scales = "free_y") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1)) 
+# Volume based by Sector for Each Month 
+stock_market_data %>%
+  group_by(Sector, Month) %>%
+  summarise(Total_Volume = sum(Volume, na.rm = TRUE),
+            Average_Volume = mean(Volume, na.rm = TRUE), .groups = 'drop') %>%
+  pivot_longer(cols = c(Average_Volume, Total_Volume), names_to = "Measure", values_to = "Value") %>%
+  mutate(Month = as.factor(Month)) %>%
+  ggplot(aes(x=Month, y=Value, fill=Sector)) + 
+  geom_col(position="dodge", width=0.8) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  labs(title = "Monthly Sector Volume Dynamics", 
+       x = "Month", 
+       y = "Volume") +
+  facet_wrap(~Measure, scales = "free_y") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1)) 
+# Volume based by Sector for Each Day of the Week
+stock_market_data %>%
+  group_by(Sector, Day_of_Week) %>%
+  summarise(Total_Volume = sum(Volume, na.rm = TRUE),
+            Average_Volume = mean(Volume, na.rm = TRUE), .groups = 'drop') %>%
+  pivot_longer(cols = c(Average_Volume, Total_Volume), names_to = "Measure", values_to = "Value") %>%
+  mutate(Day_of_Week = as.factor(Day_of_Week)) %>%
+  ggplot(aes(x=Day_of_Week, y=Value, fill=Sector)) + 
+  geom_col(position="dodge", width=0.7, size=0.5) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  labs(title = "Weekly Volume Patterns by Sector", 
+       x = "Days of Week", 
+       y = "Volume") +
+  facet_wrap(~Measure, scales = "free_y") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1)) 
+```
+
+
+1. **Annual Trading Volume Analysis by Sector:**
+
+* Both average and total trading volumes appear to peak in 2020 for both sectors, potentially indicating a response to market conditions in that year, such as those due to the COVID-19 pandemic.
+* In subsequent years, both the average and total volumes show a declining trend for Technology, whereas Financials show some fluctuation with a slight upward trend in 2023.
+
+2. **Quarterly Volume Patterns Across Sectors:**
+
+* There's a noticeable spike in trading volume in the first and third quarters for the Technology sector, which could be as a result of a sector specific event.
+* The Financials sector shows a slight decline pattern in trading volume quarterly.
+
+3. **Monthly Sector Volume Dynamics:**
+
+* Trading volume for the Technology sector peaks significantly in March and also shows a smaller peak in September.
+* The Financials sector displays less pronounced monthly variations, but also shows higher volumes in March.
+
+4. **Weekly Volume Patterns by Sector:**
+
+* The Technology sector shows higher average and total volumes later in the week, with a notable peak on Fridays.
+* The Financials sector's trading volume increases steadily throughout the week, with the highest volumes on Fridays as well.
+
+**From these visuals, we can deduce a few seasonal patterns:**
+
+* **Annual**: 2020 was a particularly active year for trading across both sectors, with activity leveling off or decreasing afterwards, possibly as markets stabilized.
+* **Quarterly**: The Technology sector shows more variation with notable peaks, which could be due to earnings reports or other sector-wide news events.
+* **Monthly**: Both sectors show higher activity in March, which could be related to the end of the fiscal quarter or other cyclical financial events.
+* **Weekly**: Trading activity increases towards the end of the week in both sectors, with the highest volumes typically on Fridays.
+```{r message=TRUE, warning=FALSE}
+# 2 Exploring total and average Volatility in relation to month, year, day_of-week and Quarter
+# Volatility based by Sector for Each Year 
+stock_market_data %>%
+  group_by(Sector, Year) %>%
+  summarise(Total_Volatility = sum(Volatility, na.rm = TRUE),
+            Average_Volatility = mean(Volatility, na.rm = TRUE), .groups = 'drop') %>%
+  pivot_longer(cols = c(Average_Volatility, Total_Volatility), names_to = "Measure", values_to = "Value") %>%
+  mutate(Year = as.factor(Year)) %>%
+  ggplot(aes(x=Year, y=Value, fill=Sector)) + 
+  geom_col(position="dodge", width=0.5) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  labs(title = "Annual Volatility Analysis by Sector", 
+       x = "Year", 
+       y = "Volatility") +
+  facet_wrap(~Measure, scales = "free_y") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1)) 
+# Volatility based by Sector for Each Quarter 
+stock_market_data %>%
+  group_by(Sector, Quarter) %>%
+  summarise(Total_Volatility = sum(Volatility, na.rm = TRUE),
+            Average_Volatility = mean(Volatility, na.rm = TRUE), .groups = 'drop') %>%
+  pivot_longer(cols = c(Average_Volatility, Total_Volatility), names_to = "Measure", values_to = "Value") %>%
+  mutate(Quarter = as.factor(Quarter)) %>%
+  ggplot(aes(x=Quarter, y=Value, fill=Sector)) + 
+  geom_col(position="dodge", width=0.5) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  labs(title = "Quarterly Sector Volatility Analysis", 
+       x = "Quarter", 
+       y = "Volatility") +
+  facet_wrap(~Measure, scales = "free_y") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1)) 
+# Volatility based by Sector for Each Month 
+stock_market_data %>%
+  group_by(Sector, Month) %>%
+  summarise(Total_Volatility = sum(Volatility, na.rm = TRUE),
+            Average_Volatility = mean(Volatility, na.rm = TRUE), .groups = 'drop') %>%
+  pivot_longer(cols = c(Average_Volatility, Total_Volatility), names_to = "Measure", values_to = "Value") %>%
+  mutate(Month = as.factor(Month)) %>%
+  ggplot(aes(x=Month, y=Value, fill=Sector)) + 
+  geom_col(position="dodge", width=0.8) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  labs(title = "Monthly Volatility Patterns Across Sectors", 
+       x = "Month", 
+       y = "Volatility") +
+  facet_wrap(~Measure, scales = "free_y") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1)) 
+# Volatility based by Sector for Each Day of the Week
+stock_market_data %>%
+  group_by(Sector, Day_of_Week) %>%
+  summarise(Total_Volatility = sum(Volatility, na.rm = TRUE),
+            Average_Volatility = mean(Volatility, na.rm = TRUE), .groups = 'drop') %>%
+  pivot_longer(cols = c(Average_Volatility, Total_Volatility), names_to = "Measure", values_to = "Value") %>%
+  mutate(Day_of_Week = as.factor(Day_of_Week)) %>%
+  ggplot(aes(x=Day_of_Week, y=Value, fill=Sector)) + 
+  geom_col(position="dodge", width=0.7, size=0.5) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  labs(title = "Weekly Volatility Insights by Sector", 
+       x = "Days of Week", 
+       y = "Volatility") +
+  facet_wrap(~Measure, scales = "free_y") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1)) 
+
+```
+
+
+1. **Annual Volatility Analysis by Sector:**
+
+* Volatility in both sectors peaked in 2020, which aligns with the onset of 
+the COVID-19 pandemic, a period of great uncertainty and market turbulence.
+Subsequent years show a general decline in average volatility, indicating a 
+return to more stable market conditions.
+* The total volatility indicates that while average levels may decrease, 
+   the cumulative impact of daily volatility remains significant, particularly in the Technology sector.
+
+2. **Quarterly Sector Volatility Analysis:**
+
+* Quarterly volatility shows a peak in Q1 for both sectors. Which could be as a result of a sector specific event. besides that no clear pattern of trend in either sector, indicating that drivers of volatility may not be linked to specific quarters consistently
+* The Technology sector, however, typically shows a slightly higher total volatility than Financials, which may reflect its susceptibility to rapid changes due to innovation, product announcements, and other market-moving news.
+
+3. **Monthly Volatility Patterns Across Sectors:**
+
+* The highest peaks of average monthly volatility occur in March and  October for both sectors, possibly reflecting quarterly financial reporting  and market reactions to economic policy announcements that often happen at the end of fiscal quarters.
+* Total volatility shows significant peaks, particularly in March, for both sectors, which suggests these months have numerous days with higher volatility.
+
+4. **Weekly Volatility Insights by Sector:**
+
+* Average daily volatility seems fairly consistent across the week for both sectors.
+* Total weekly volatility is also relatively consistent, with no pronounced spikes on specific days, which might imply that volatility is not particularly day-of-the-week dependent.
+
+From these charts, we can deduce that 2020 was an outlier year with significantly higher volatility across sectors, likely due to pandemic-related uncertainty. The monthly and quarterly data don't show strong seasonal patterns, suggesting that volatility is more likely driven by specific events rather than inherent seasonality. Weekly data also suggest that day-of-the-week doesn't have a strong impact on volatility. Overall, while there are occasional peaks in volatility that correspond with broader market events or economic cycles, it appears to be more event-driven than seasonally driven.
+```{r message=TRUE, warning=FALSE}
+# 3 Exploring total and average Daily Market_Return in relation to month, year, day_of-week and Quarter
+# Market Return based by Sector for Each Year 
+stock_market_data %>%
+  group_by(Sector, Year) %>%
+  summarise(Total_Market_Return = sum(Market_Return, na.rm = TRUE),
+            Average_Market_Return = mean(Market_Return, na.rm = TRUE), .groups = 'drop') %>%
+  pivot_longer(cols = c(Average_Market_Return, Total_Market_Return), names_to = "Measure", values_to = "Value") %>%
+  mutate(Year = as.factor(Year)) %>%
+  ggplot(aes(x=Year, y=Value, fill=Sector)) + 
+  geom_col(position="dodge", width=0.5) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  labs(title = "Yearly Market Return Comparison by Sector", 
+       x = "Year", 
+       y = "Market Return") +
+  facet_wrap(~Measure, scales = "free_y") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1)) 
+# Market Return based by Sector for Each Quarter 
+stock_market_data %>%
+  group_by(Sector, Quarter) %>%
+  summarise(Total_Market_Return = sum(Market_Return, na.rm = TRUE),
+            Average_Market_Return = mean(Market_Return, na.rm = TRUE), .groups = 'drop') %>%
+  pivot_longer(cols = c(Average_Market_Return, Total_Market_Return), names_to = "Measure", values_to = "Value") %>%
+  mutate(Quarter = as.factor(Quarter)) %>%
+  ggplot(aes(x=Quarter, y=Value, fill=Sector)) + 
+  geom_col(position="dodge", width=0.5) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  labs(title = "Sector Returns: A Quarterly Perspective", 
+       x = "Quarter", 
+       y = "Market Return") +
+  facet_wrap(~Measure, scales = "free_y") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1)) 
+# Market Return based by Sector for Each Month 
+stock_market_data %>%
+  group_by(Sector, Month) %>%
+  summarise(Total_Market_Return = sum(Market_Return, na.rm = TRUE),
+            Average_Market_Return = mean(Market_Return, na.rm = TRUE), .groups = 'drop') %>%
+  pivot_longer(cols = c(Average_Market_Return, Total_Market_Return), names_to = "Measure", values_to = "Value") %>%
+  mutate(Month = as.factor(Month)) %>%
+  ggplot(aes(x=Month, y=Value, fill=Sector)) + 
+  geom_col(position="dodge", width=0.8) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  labs(title = "Exploring Monthly Returns by Sector", 
+       x = "Month", 
+       y = "Market Return") +
+  facet_wrap(~Measure, scales = "free_y") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1)) 
+# Market Return based by Sector for Each Day of the Week
+stock_market_data %>%
+  group_by(Sector, Day_of_Week) %>%
+  summarise(Total_Market_Return = sum(Market_Return, na.rm = TRUE),
+            Average_Market_Return = mean(Market_Return, na.rm = TRUE), .groups = 'drop') %>%
+  pivot_longer(cols = c(Average_Market_Return, Total_Market_Return), names_to = "Measure", values_to = "Value") %>%
+  mutate(Day_of_Week = as.factor(Day_of_Week)) %>%
+  ggplot(aes(x=Day_of_Week, y=Value, fill=Sector)) + 
+  geom_col(position="dodge", width=0.7, size=0.5) +
+  scale_fill_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  labs(title = "Day-of-Week Returns Analysis by Sector", 
+       x = "Days of Week", 
+       y = "Market Return") +
+  facet_wrap(~Measure, scales = "free_y") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1)) 
+```
+
+
+1. **Yearly Market Return Comparison by Sector:**
+
+* On average, the market return for both sectors fluctuates around zero across the years, with some years seeing positive average returns and others seeing negative.
+* The total market return seems to vary significantly, particularly for the Technology sector, suggesting that while individual days may have small returns, the cumulative effect can be quite large, as shown by the spikes in 2020 and 2023 for Technology.
+
+2. **Sector Returns: A Quarterly Perspective:**
+
+* The quarterly returns show variation within and across sectors, but with no clear seasonal pattern. This indicates that market returns are likely influenced by numerous factors beyond seasonality.
+* The Technology sector seems to experience more pronounced fluctuations in total returns, indicating higher market sensitivity or event-driven impacts within that sector.
+
+3. **Exploring Monthly Returns by Sector:**
+
+* Monthly returns for both sectors generally hover around zero, with some months showing slight positive or negative average returns.
+* Again, the total monthly return reveals that some months can have outsized impacts on the cumulative return, particularly noticeable for the Technology sector in several months.
+
+4. **Day-of-Week Returns Analysis by Sector:**
+
+* The day-of-the-week analysis shows relatively small fluctuations in average market returns, suggesting daily returns tend to be modest.
+* The total return by day of the week highlights individual days that have larger cumulative impacts on the market, particularly noticeable for Technology on Tuesdays and for Financials on Fridays.
+
+From these charts, we can observe that while daily market returns tend to be small, their cumulative effect can create significant variability in total market returns. The Technology sector shows larger spikes in total returns, implying greater volatility or larger movements in the market based on events or news. The Financials sector appears to be more stable, but still experiences notable movements in total market returns. There is no clear evidence of seasonal trends in market returns, implying that sector performance is likely driven by a variety of factors including corporate earnings, economic data releases, and broader market conditions.
+
+#### **Time Series Analysis**
+
+Finally, I conducted a time series analysis, observing how average close price, 
+trading volume,volatility and market return evolved over time across sectors and individual stocks. This revealed growth trends and volatility levels,  showcasing the dynamic nature of the stock market. Through this methodology, I gained deep insights into market dynamics, laying a foundation for identifying investment opportunities and understanding 
+market risk.
+
+**Time series Analysis on a Sector Level**
+
+```{r message=TRUE, warning=FALSE}
+# On a sector level
+# 1 Trend of Average Close Price Over the Years
+stock_market_data %>% group_by(Date, Sector) %>%
+  summarise(Average_Close = mean(Close)) %>%
+  ggplot(aes(x=Date, y=Average_Close, color=Sector))+
+  geom_line() +
+  scale_color_manual(values = 
+                      c("Financials" = "#467ab0", 
+                        "Technology" = "#009933")) +
+  labs(title = "Sectorial Trends: Average Close Price Evolution Over Time", 
+       x="Date",y="Average Close Price") +
+  facet_wrap( ~ Sector) +
+  theme_minimal()
+# 2 Trend of Average Volume Over the Years 
+stock_market_data %>% group_by(Date, Sector) %>%
+  summarise(Average_Volume = mean(Volume)) %>%
+  ggplot(aes(x=Date, y=Average_Volume, color=Sector))+
+  geom_line() +
+  geom_smooth( size=0.7, color="#696969") +
+  scale_color_manual(values = 
+                       c("Financials" = "#467ab0", 
+                         "Technology" = "#009933")) +
+  labs(title = "Trading Volume Trends by Sector Over Time", 
+       x="Date",y="Average Volume") +
+  facet_wrap( ~ Sector) +
+  theme_minimal()
+# 3 Trend of Average Volatility Over the Years 
+stock_market_data %>% group_by(Date, Sector) %>%
+  summarise(Average_Volatility = mean(Volatility)) %>%
+  ggplot(aes(x=Date, y=Average_Volatility, color=Sector))+
+  geom_line() +
+  geom_smooth( size=0.7, color="#696969") +
+  scale_color_manual(values = 
+                       c("Financials" = "#467ab0", 
+                         "Technology" = "#009933")) +
+  labs(title = "Volatility Patterns Across Sectors Over Time", x="Date",y="Average Volatility") +
+  facet_wrap( ~ Sector) +
+  theme_minimal()
+# 4 Trend of Average Daily Market Return Over the Years 
+stock_market_data %>% group_by(Date, Sector) %>%
+  summarise(Average_Market_Return = mean(Market_Return)) %>%
+  ggplot(aes(x=Date, y=Average_Market_Return, color=Sector))+
+  geom_line() +
+  scale_color_manual(values = 
+                       c("Financials" = "#467ab0", 
+                         "Technology" = "#009933")) +
+  labs(title = "Comparative Analysis: Daily Market Returns by Sector Over Years", x="Date",y="Average Market Return") +
+  facet_wrap( ~ Sector) +
+  theme_minimal()
+```
+
+
+1. **Average Close Price Evolution Over Time for each Sectors**
+
+* The Technology sector has shown a significant upward trend in average close price, with a noticeable dip and recovery around 2022.
+* The Financials sector exhibits a more stable and gradual increase in average close price over time, without the same level of volatility observed in the Technology sector.
+
+2. **Trading Volume Trends by Sector Over Time**
+* Trading volume in the Technology sector is highly variable, with distinct spikes suggesting periods of intense trading activity.
+* The Financials sector shows more subdued volume fluctuations, indicating less erratic trading activity.
+
+3. **Volatility Patterns Across Sectors Over Time**
+
+* Both sectors experienced heightened volatility around 2020, which aligns with the market's response to the COVID-19 pandemic.
+* The Technology sector has continued to experience high volatility post-2020, with some stabilization but still considerable fluctuations.
+* The Financials sector's volatility seems to have decreased more steadily after 2020, maintaining lower levels relative to Technology.
+
+4. **Comparative Analysis: Daily Market Returns by Sector Over Years**
+
+* Market returns for both sectors fluctuate around zero, with the Technology sector exhibiting a wider range of returns, suggesting higher risk and potential for reward.
+* The Financials sector shows a tighter clustering of daily returns, indicating less variability and potentially lower risk.
+
+The upward trend in the average close price of the Technology sector reflects a robust growth trajectory but comes with higher volatility and wider fluctuations in market returns. In contrast, the Financials sector appears more stable with less dramatic growth in close prices, lower trading volumes, and more contained daily market returns.These trends can inform investors about the risk profiles of each sector Technology as growth-oriented but more volatile, and Financials as potentially more stable but with less aggressive growth. The specific spikes and dips could correlate with industry-specific events or broader economic changes, warranting a closer analysis for precise causes.
+
+
+
+**Time series Analysis on a Stock Level**
+
+```{r message=TRUE, warning=FALSE}
+# On a Stock level
+# 1 Trend of Average Close Price Over the Years for each stocks
+stock_market_data %>% group_by(Date,Sector,Symbol) %>%
+  summarise(Average_Close = mean(Close)) %>%
+  ggplot(aes(x=Date, y=Average_Close, color=Sector)) +
+  geom_line() +
+  scale_color_manual(values = 
+                       c("Financials" = "#467ab0", 
+                         "Technology" = "#009933")) +
+  labs(title = "Individual Stock Performance: 
+       A Year-Over-Year Close Price Analysis", 
+       x="Date",y="Average Close Price") +
+  facet_wrap(~ Symbol, scales = "free_y", ncol = 2 ) +
+  theme_minimal()
+# 2 Trend of Average Volume Over the Years 
+stock_market_data %>% group_by(Date, Sector, Symbol) %>%
+  summarise(Average_Volume = mean(Volume)) %>%
+  ggplot(aes(x=Date, y=Average_Volume, color=Sector)) +
+  geom_line() +
+  geom_smooth( size=0.9, color="#696969") +
+  scale_color_manual(values = 
+                       c("Financials" = "#467ab0", 
+                         "Technology" = "#009933")) +
+  labs(title = "Trend in Volume Over the years for each stock",
+       x="Date",y="Average Volume") +
+  facet_wrap( ~ Symbol, scales = "free_y", ncol = 2) +
+  theme_minimal()
+# 3 Trend of Average Volatility Over the Years 
+stock_market_data %>% group_by(Date, Sector, Symbol) %>%
+  summarise(Average_Volatility = mean(Volatility)) %>%
+  ggplot(aes(x=Date, y=Average_Volatility, color=Sector)) +
+  geom_line() +
+  geom_smooth( size=0.9, color="#696969") +
+  scale_color_manual(values = 
+                       c("Financials" = "#467ab0", 
+                         "Technology" = "#009933")) +
+  labs(title = "Trend in Volatility Over the years for each stock", 
+       x="Date",y="Average Volatility") +
+  facet_wrap( ~ Symbol, scales = "free_y", ncol = 2) +
+  theme_minimal()
+# 4 Trend of Average Daily Market Return Over the Years 
+stock_market_data %>% group_by(Date, Sector, Symbol) %>%
+  summarise(Average_Market_Return = mean(Market_Return)) %>%
+  ggplot(aes(x=Date, y=Average_Market_Return, color=Sector)) +
+  geom_line() +
+  scale_color_manual(values = 
+                       c("Financials" = "#467ab0", 
+                         "Technology" = "#009933")) +
+  labs(title = "Yearly Market Return Trends Across Stocks", 
+       x="Date",y="Average Market Return") +
+  facet_wrap( ~ Symbol,scales = "free_y", ncol = 2) +
+  theme_minimal()
+
+```
+
+
+1. **Average Close Price Evolution Over Time for each Stocks**
+
+* Technology stocks (AAPL, GOOG, MSFT, META) show a clear upward trend 
+in average close price, indicative of strong growth over the years. 
+Notably, AAPL and MSFT demonstrate a more consistent upward trajectory.
+* Financial stocks (BAC, HSBC, JPM, WFC) display a relatively stable or 
+modest upward trend, with less volatility compared to their tech counterparts.
+
+2. **Trend in Volume Over the Years for each stocks**
+
+* AAPL and MSFT exhibit significant spikes in trading volume, possibly correlating with product announcements or quarterly earnings releases.
+* Trading volume for Financials appears more consistent, with fewer dramatic spikes, suggesting less reaction to market events or news compared to the Technology stocks.
+
+3. **Trend in Volatility Over the Years for each stocks**
+
+* Volatility for Technology stocks is pronounced, with AAPL and MSFT again showing significant movement. META's volatility appears especially high, perhaps reflecting recent market responses to social media and regulatory news.
+* Financial stocks show lower volatility overall compared to Technology stocks, aligning with their more stable price trend.
+
+4. **Yearly Market Return Trends Across Stocks**
+
+* Market returns for Technology stocks are more varied with a wider spread, suggesting higher risk and potential reward. MSFT shows a relatively stable pattern of returns despite its volatility.
+* Financial stocks exhibit narrower return spreads on a daily basis, indicative of lower risk and more consistent performance.
+
+The patterns displayed suggest that Technology stocks have been growth leaders with higher risk profiles, marked by more significant price movements, trading volumes, and volatility. Conversely, Financials show more stability but with less pronounced growth, which may be preferred by investors with a lower risk appetite. These trends and patterns are valuable for portfolio construction and risk management strategies.
+
+
+###### **Outcome**
+
+The application of this methodology yielded comprehensive insights into the 
+stock market's behaviour, highlighting differences between sectors, 
+identifying key trends and anomalies, and uncovering the correlation 
+between various market indicators. This facilitated a nuanced 
+understanding of market dynamics, essential for informed decision-making 
+and strategic investment planning.
+
+
+
+
+## Challenges and Solutions
+
+#### Challenges
+
+* **Data Complexity and Volume**: The vast amount and intricacy of stock 
+market data initially made management and manipulation challenging.
+* **Outlier Detection and Handling**: Identifying the best approach 
+to outliers was critical, as they could skew analysis results if not properly addressed.
+* **Interpreting Correlations**: Understanding the implications of 
+various correlations between market variables required careful consideration 
+and contextual knowledge.
+* **Technical Issues with R Studio**: Frequent hangs and slowdowns in R Studio, 
+likely due to the extensive operations and code running simultaneously, 
+disrupted the smooth progress of analysis.
+* **Variable Selection Conflict**: Deciding on the most informative variables 
+for analysis and those that would best answer my research questions was a recurring dilemma.
+
+#### Solutions
+
+* **Efficient Data Handling**: Leveraged powerful R packages like dplyr and 
+tidyverse for effective data management.
+* **Strategic Approach to Outliers**: Chose to retain outliers, viewing them 
+as meaningful extremes that could signify pivotal market events.
+* **In-depth Correlation Analysis**: Supplemented statistical findings with 
+market research to contextualize correlation insights accurately.
+* **Technical Workarounds**: Implemented measures to mitigate technical issues,
+such as optimizing code for efficiency and breaking down analysis into smaller, 
+manageable segments.
+* **Iterative Variable Selection**: Adopted an iterative approach to variable 
+selection, continuously refining the choices based on the evolving understanding
+of the dataset and research objectives.
+
+
+## Conclusion
+
+This exploratory data analysis journey through historical stock market data 
+has yielded comprehensive insights into the behaviours and dynamics of the technology and financial sectors. Key takeaways include:
+
+* **Sectoral Differences**: The analysis highlighted distinct patterns in 
+trading volume, market returns, and volatility between the technology and 
+financial sectors.
+
+* **Market Dynamics**: Seasonal and time series analysis revealed 
+how external events and inherent market forces shape trading behaviours 
+and stock valuations over time.
+
+* **Correlation Insights**: The exploration of correlations between 
+various financial metrics unveiled complex relationships that govern market movements.
+
+The reliability and reproducibility of this analysis are underpinned by 
+systematic data preprocessing, meticulous methodological application, 
+and transparent documentation of the analytically process. Future inquiries
+spurred by this analysis promise further exploration into the intricacies of
+market behavior, offering opportunities for deeper insights and refined investment strategies.
+
+
+
+
+
+
+
+
+
+
+
+
+
